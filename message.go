@@ -28,7 +28,7 @@ func NewMessage() (message *Message) {
 	e := dom.CreateElement("Envelope")
 	doc.SetRoot(e)
 	AddUsualNamespaces(e)
-	NS_SOAP_ENV.SetTo(e)
+	NS_ENVELOPE.SetTo(e)
 
 	message = &Message{document: doc, envelope: e}
 	return
@@ -37,7 +37,7 @@ func NewMessage() (message *Message) {
 func (message *Message) NewBody() (body *dom.Element) {
 	body = dom.CreateElement("Body")
 	message.envelope.AddChild(body)
-	NS_SOAP_ENV.SetTo(body)
+	NS_ENVELOPE.SetTo(body)
 	return
 }
 
