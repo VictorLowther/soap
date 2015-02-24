@@ -1,3 +1,5 @@
+// Package soap wraps github.com/VictorLowther/simplexml/dom to provide
+// convienent methods for dealing with SOAP messages as a SOAP client.
 package soap
 
 import (
@@ -14,76 +16,28 @@ var (
 	faultName  xml.Name = xml.Name{Space: NS_ENVELOPE, Local: "Fault"}
 )
 
+// Message represents a SOAP message.
 type Message struct {
 	Doc          *dom.Document
-	header, body *dom.Element
+	Header, Body *dom.Element
 }
 
+// NewMessage creates the skeleton of a new SOAP message.
 func NewMessage() *Message {
-	doc := dom.CreateDocument()
-	root := dom.CreateElement(envName)
-	doc.SetRoot(root)
-	return &Message{Doc: doc}
+	res := &Message{
+		Doc:    dom.CreateDocument(),
+		Body:   dom.CreateElement(bodyName),
+		Header: dom.CreateElement(headerName),
+	}
+	res.Doc.SetRoot(dom.CreateElement(envName))
+	res.Doc.Root().AddChild(res.Header)
+	res.Doc.Root().AddChild(res.Body)
+	return res
 }
 
-func (m *Message) Headers() []*dom.Element {
-	if m.header == nil {
-		return []*dom.Element{}
-	}
-	return m.header.Children()
-}
-
-func (m *Message) AddHeader(e *dom.Element) {
-	if m.header == nil {
-		envelope := m.Doc.Root()
-		m.header = dom.CreateElement(headerName)
-		envelope.AddChild(m.header)
-	}
-	m.header.AddChild(e)
-}
-
-func (m *Message) RemoveHeader(e *dom.Element) *dom.Element {
-	if m.header == nil {
-		return nil
-	}
-	return m.header.RemoveChild(e)
-}
-
-func (m *Message) Body() []*dom.Element {
-	if m.body == nil {
-		return []*dom.Element{}
-	}
-	return m.body.Children()
-}
-
-func (m *Message) AddBody(e *dom.Element) {
-	if m.body == nil {
-		envelope := m.Doc.Root()
-		m.body = dom.CreateElement(bodyName)
-		envelope.AddChild(m.body)
-	}
-	m.body.AddChild(e)
-}
-
-func (m *Message) RemoveBody(e *dom.Element) *dom.Element {
-	if m.body == nil {
-		return nil
-	}
-	return m.body.RemoveChild(e)
-}
-
-func Parse(r io.Reader) (msg *Message, err error) {
-	doc, err := dom.Parse(r)
-	if err != nil {
-		return nil, err
-	}
-	msg, err = IsSoap(doc)
-	if err != nil {
-		return nil, err
-	}
-	return msg, nil
-}
-
+// IsSoap takes a simplexml dom.Document and validates that
+// it contains a valid SOAP message.  If it does, it returns a Message.
+// If it does not, it returns an error explaining why not.
 func IsSoap(doc *dom.Document) (res *Message, err error) {
 	envelope := doc.Root()
 	if envelope == nil {
@@ -113,5 +67,27 @@ func IsSoap(doc *dom.Document) (res *Message, err error) {
 			return nil, fmt.Errorf("Invalid SOAP: Unexpected tag %v", c.Name)
 		}
 	}
-	return &Message{Doc: doc, header: header, body: body}, nil
+	if header == nil {
+		header = dom.CreateElement(headerName)
+		doc.Root().AddChild(header)
+	}
+	if body == nil {
+		body = dom.CreateElement(bodyName)
+		doc.Root().AddChild(body)
+	}
+	return &Message{Doc: doc, Header: header, Body: body}, nil
+}
+
+// Parse parses what is hopefully a well-formed SOAP message
+// from the passed io.Reader.  If it is not, err will say why not.
+func Parse(r io.Reader) (msg *Message, err error) {
+	doc, err := dom.Parse(r)
+	if err != nil {
+		return nil, err
+	}
+	msg, err = IsSoap(doc)
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
 }
