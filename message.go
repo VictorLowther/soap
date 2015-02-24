@@ -9,6 +9,8 @@ import (
 	"io"
 )
 
+const ContentType = "application/soap+xml; charset=utf-8"
+
 var (
 	envName    xml.Name = xml.Name{Space: NS_ENVELOPE, Local: "Envelope"}
 	headerName xml.Name = xml.Name{Space: NS_ENVELOPE, Local: "Header"}
