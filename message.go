@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/VictorLowther/simplexml/dom"
 	"io"
+	"bytes"
 )
 
 const ContentType = "application/soap+xml; charset=utf-8"
@@ -92,4 +93,9 @@ func Parse(r io.Reader) (msg *Message, err error) {
 		return nil, err
 	}
 	return msg, nil
+}
+
+// Reader returns a bytes.Reader that can be handed off to anything that needs it.
+func (m *Message) Reader() *bytes.Reader {
+	return m.Doc.Reader()
 }
