@@ -21,20 +21,20 @@ var (
 
 // Message represents a SOAP message.
 type Message struct {
-	Doc          *dom.Document
+	*dom.Document
 	Header, Body *dom.Element
 }
 
 // NewMessage creates the skeleton of a new SOAP message.
 func NewMessage() *Message {
 	res := &Message{
-		Doc:    dom.CreateDocument(),
-		Body:   dom.CreateElement(bodyName),
-		Header: dom.CreateElement(headerName),
+		Docuemnt: dom.CreateDocument(),
+		Body:     dom.CreateElement(bodyName),
+		Header:   dom.CreateElement(headerName),
 	}
-	res.Doc.SetRoot(dom.CreateElement(envName))
-	res.Doc.Root().AddChild(res.Header)
-	res.Doc.Root().AddChild(res.Body)
+	res.SetRoot(dom.CreateElement(envName))
+	res.Root().AddChild(res.Header)
+	res.Root().AddChild(res.Body)
 	return res
 }
 
@@ -78,7 +78,7 @@ func IsSoap(doc *dom.Document) (res *Message, err error) {
 		body = dom.CreateElement(bodyName)
 		doc.Root().AddChild(body)
 	}
-	return &Message{Doc: doc, Header: header, Body: body}, nil
+	return &Message{Document: doc, Header: header, Body: body}, nil
 }
 
 // Parse parses what is hopefully a well-formed SOAP message
@@ -95,7 +95,3 @@ func Parse(r io.Reader) (msg *Message, err error) {
 	return msg, nil
 }
 
-// Reader returns a bytes.Reader that can be handed off to anything that needs it.
-func (m *Message) Reader() *bytes.Reader {
-	return m.Doc.Reader()
-}
