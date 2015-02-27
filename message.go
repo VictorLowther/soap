@@ -4,10 +4,9 @@ package soap
 
 import (
 	"encoding/xml"
-	"fmt"
+	"errors"
 	"github.com/VictorLowther/simplexml/dom"
 	"io"
-	"bytes"
 )
 
 const ContentType = "application/soap+xml; charset=utf-8"
@@ -28,7 +27,7 @@ type Message struct {
 // NewMessage creates the skeleton of a new SOAP message.
 func NewMessage() *Message {
 	res := &Message{
-		Docuemnt: dom.CreateDocument(),
+		Document: dom.CreateDocument(),
 		Body:     dom.CreateElement(bodyName),
 		Header:   dom.CreateElement(headerName),
 	}
@@ -44,30 +43,29 @@ func NewMessage() *Message {
 func IsSoap(doc *dom.Document) (res *Message, err error) {
 	envelope := doc.Root()
 	if envelope == nil {
-		return nil, fmt.Errorf("Invalid SOAP: Document does not have a root element")
+		return nil, errors.New(NoEnvelope)
 	}
 	if envelope.Name != envName {
-		return nil, fmt.Errorf("Invalid SOAP: Root should be %v, not '%v'", envName, envelope.Name)
+		return nil, errors.New(BadEnvelope)
 	}
 	children := envelope.Children()
 	if len(children) > 2 {
-		return nil, fmt.Errorf("Invalid SOAP: Envelope must have at most 2 children, not %d",
-			len(children))
+		return nil, errors.New(EnvelopeOverstuffed)
 	}
 	var header, body *dom.Element
 	for _, c := range children {
 		if c.Name == headerName {
 			if header != nil {
-				return nil, fmt.Errorf("Invalid SOAP: More than one Header element!")
+				return nil, errors.New(TooManyHeader)
 			}
 			header = c
 		} else if c.Name == bodyName {
 			if body != nil {
-				return nil, fmt.Errorf("Invalid SOAP: More than one Body element!")
+				return nil, errors.New(TooManyBody)
 			}
 			body = c
 		} else {
-			return nil, fmt.Errorf("Invalid SOAP: Unexpected tag %v", c.Name)
+			return nil, errors.New(BadTag)
 		}
 	}
 	if header == nil {
@@ -94,4 +92,3 @@ func Parse(r io.Reader) (msg *Message, err error) {
 	}
 	return msg, nil
 }
-
