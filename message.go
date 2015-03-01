@@ -43,9 +43,17 @@ func (m *Message) Headers() []*dom.Element {
 	return m.header.Children()
 }
 
+func (m *Message) AllHeaderElements() []*dom.Element {
+	return m.header.Descendants()
+}
+
 // Body returns the children of the Body element.
 func (m *Message) Body() []*dom.Element {
 	return m.body.Children()
+}
+
+func (m *Message) AllBodyElements() []*dom.Element {
+	return m.body.Descendants()
 }
 
 func set(loc *dom.Element, elems ...*dom.Element) {
