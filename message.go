@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"github.com/VictorLowther/simplexml/dom"
+	"github.com/VictorLowther/simplexml/search"
 	"io"
 )
 
@@ -35,6 +36,11 @@ func NewMessage() *Message {
 	res.Root().AddChild(res.Header)
 	res.Root().AddChild(res.Body)
 	return res
+}
+
+func (m *Message) Fault() *dom.Element {
+	return search.First(search.Tag("Fault", NS_ENVELOPE),
+		m.Body.Children())
 }
 
 // IsSoap takes a simplexml dom.Document and validates that
