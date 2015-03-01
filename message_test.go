@@ -44,7 +44,7 @@ func TestSoapNoEnvelope(t *testing.T) {
 
 func TestSoapBadEnvelope(t *testing.T) {
 	msg := NewMessage()
-	msg.SetRoot(dom.ElementN("BadEnvelope"))
+	msg.SetRoot(dom.Elem("BadEnvelope", ""))
 	_, err := IsSoap(msg.Document)
 	if err == nil || err.Error() != BadEnvelope {
 		t.Errorf("IsSoap should have failed with BadEnvelope, got %v", err)
@@ -53,7 +53,7 @@ func TestSoapBadEnvelope(t *testing.T) {
 
 func TestSoapEnvelopeOverstuffed(t *testing.T) {
 	msg := NewMessage()
-	msg.Root().AddChild(dom.ElementN("ExtraThing"))
+	msg.Root().AddChild(dom.Elem("ExtraThing", ""))
 	_, err := IsSoap(msg.Document)
 	if err == nil || err.Error() != EnvelopeOverstuffed {
 		t.Errorf("IsSoap should have failed with EnvelopeOverstuffed, got %v", err)
@@ -96,5 +96,36 @@ func TestSoapAddHeaderAndBody(t *testing.T) {
 	}
 	if msg.Header == nil || msg.Body == nil {
 		t.Error("IsSoap failed to add a header and a body")
+	}
+}
+
+var soapFault string = `<?xml version="1.0"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"
+            xmlns:xml="http://www.w3.org/XML/1998/namespace">
+  <s:Body>
+    <s:Fault>
+      <s:Code>
+        <s:Value>s:Sender</s:Value>
+        <s:Subcode>
+          <s:Value>It died.</s:Value>
+        </s:Subcode>
+      </s:Code>
+      <s:Reason>
+        <s:Text xml:lang="en">Death By Chocolate</s:Text>
+      </s:Reason>
+      <s:Detail>
+        <maxChoc>5 bars</maxChoc>
+      </s:Detail>
+    </s:Fault>
+  </s:Body>
+</s:Envelope>`
+
+func TestSoapFault(t *testing.T) {
+	msg, err := Parse(strings.NewReader(soapFault))
+	if err != nil {
+		t.Errorf("Error %v parsing %s", err, soapFault)
+	}
+	if f := msg.Fault(); f == nil {
+		t.Error("Expected message to be a SOAP Fault!")
 	}
 }
