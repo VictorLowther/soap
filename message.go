@@ -22,25 +22,99 @@ var (
 // Message represents a SOAP message.
 type Message struct {
 	*dom.Document
-	Header, Body *dom.Element
+	header, body *dom.Element
 }
 
 // NewMessage creates the skeleton of a new SOAP message.
 func NewMessage() *Message {
 	res := &Message{
 		Document: dom.CreateDocument(),
-		Body:     dom.CreateElement(bodyName),
-		Header:   dom.CreateElement(headerName),
+		body:     dom.CreateElement(bodyName),
+		header:   dom.CreateElement(headerName),
 	}
 	res.SetRoot(dom.CreateElement(envName))
-	res.Root().AddChild(res.Header)
-	res.Root().AddChild(res.Body)
+	res.Root().AddChild(res.header)
+	res.Root().AddChild(res.body)
 	return res
 }
 
+// Headers returns the children of the Header element.
+func (m *Message) Headers() []*dom.Element {
+	return m.header.Children()
+}
+
+// Body returns the children of the Body element.
+func (m *Message) Body() []*dom.Element {
+	return m.body.Children()
+}
+
+func set(loc *dom.Element, elems ...*dom.Element) {
+	for _, elem := range elems {
+		e := search.First(search.Tag(elem.Name.Local, elem.Name.Space),
+			loc.Children())
+		if e == nil {
+			loc.AddChild(elem)
+		} else {
+			e.Replace(elem)
+		}
+	}
+}
+
+// SetHeader adds (or updates) any number of elements to the SOAP
+// header.
+//
+// Elements that do not exist will be appended to the rest of the headers,
+// and headers that already exist will be replaced in place.
+// The SOAP message is returned.
+func (m *Message) SetHeader(elems ...*dom.Element) *Message {
+	set(m.header, elems...)
+	return m
+}
+
+// RemoveHeader removes an element from the SOAP Header.
+// If the element was not a header, nil is returned, otherwise the element
+// is returned.
+func (m *Message) RemoveHeader(elem *dom.Element) *dom.Element {
+	return m.header.RemoveChild(elem)
+}
+
+// SetBody adds (or updates) any number of elements to the SOAP
+// header.
+//
+// Elements that do not exist will be appended to the rest of the body,
+// and ones that already exist will be replaced in place.
+// The SOAP message is returned.
+func (m *Message) SetBody(elems ...*dom.Element) *Message {
+	set(m.body, elems...)
+	return m
+}
+
+// RemoveBody removes an element from the SOAP Body.
+// If the element was not a child of the SOAP body, nil is returned,
+// otherwise the element is returned.
+func (m *Message) RemoveBody(elem *dom.Element) *dom.Element {
+	return m.body.RemoveChild(elem)
+}
+
+// Fault returns the Fault element if it is present in the SOAP body,
+// otherwise it returns nil.
 func (m *Message) Fault() *dom.Element {
 	return search.First(search.Tag("Fault", NS_ENVELOPE),
-		m.Body.Children())
+		m.body.Children())
+}
+
+// MustUnderstand ensures that the given element has the
+// mustUnderstand attribute set.  WSMAN uses this to
+// cause requests to fail if the endpoint does not know
+// how to process a certian event.
+func MustUnderstand(e *dom.Element) *dom.Element {
+	return e.Attr("mustUnderstand", NS_ENVELOPE, "true")
+}
+
+// MuElemC wraps a call to dom.ElemC with a call to MustUnderstand.
+// It is intended to be used as shorthand for generating headers.
+func MuElemC(name, space, content string) *dom.Element {
+	return MustUnderstand(dom.ElemC(name, space, content))
 }
 
 // IsSoap takes a simplexml dom.Document and validates that
@@ -82,7 +156,7 @@ func IsSoap(doc *dom.Document) (res *Message, err error) {
 		body = dom.CreateElement(bodyName)
 		doc.Root().AddChild(body)
 	}
-	return &Message{Document: doc, Header: header, Body: body}, nil
+	return &Message{Document: doc, header: header, body: body}, nil
 }
 
 // Parse parses what is hopefully a well-formed SOAP message

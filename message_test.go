@@ -2,6 +2,7 @@ package soap
 
 import (
 	"github.com/VictorLowther/simplexml/dom"
+	"github.com/VictorLowther/simplexml/search"
 	"strings"
 	"testing"
 )
@@ -35,6 +36,113 @@ func TestSimpleSoap(t *testing.T) {
 	}
 }
 
+func parseSoap() *Message {
+	msg, err := Parse(strings.NewReader(simpleSoap))
+	if err != nil {
+		panic("Cannot parse test document.")
+	}
+	return msg
+}
+
+func TestSoapGetHeadersAndBody(t *testing.T) {
+	msg := parseSoap()
+	headers := msg.Headers()
+	body := msg.Body()
+	if len(headers) != 2 {
+		t.Errorf("Expected 2 headers, got %d", len(headers))
+	}
+	if headers[0].Name.Local != "Action" {
+		t.Errorf("Expected first header to be Action, not %v", headers[0].Name)
+	}
+	if s := string(headers[0].Content); s != "Frob" {
+		t.Errorf("Expected Action header to be Frob, not %s", s)
+	}
+	if headers[1].Name.Local != "To" {
+		t.Errorf("Expected second header to be To, not %v", headers[0].Name)
+	}
+	if len(body) != 1 {
+		t.Errorf("Expected 1 body element, got %d", len(body))
+	}
+}
+
+func TestSoapAddAndRemoveHeaders(t *testing.T) {
+	msg := parseSoap()
+	msg.SetHeader(
+		MuElemC("ReplyTo", "", "Me"),
+		MuElemC("AbandonAll", "", "Hope"),
+		MuElemC("Action", "", "Abandon"))
+	headers := msg.Headers()
+	if len(headers) != 4 {
+		t.Errorf("Expected 4 headers, got %d", len(headers))
+	}
+	if headers[0].Name.Local != "Action" {
+		t.Errorf("Expected first header to be Action, not %v", headers[0].Name)
+	}
+	if s := string(headers[0].Content); s != "Abandon" {
+		t.Errorf("Expected Action header to be Ababdon, not %s", s)
+	}
+	if headers[2].Name.Local != "ReplyTo" {
+		t.Errorf("Expected third header to be ReplyTo, not %v", headers[2].Name)
+	}
+	if headers[3].Name.Local != "AbandonAll" {
+		t.Errorf("Expected fourth header to be AbandonAll, not %v", headers[3].Name)
+	}
+	removed := msg.RemoveHeader(headers[2])
+	if removed == nil {
+		t.Errorf("Failed to remove %v", headers[2].Name)
+	}
+	if removed.Name.Local != "ReplyTo" {
+		t.Errorf("Expected removed header to be ReplyTo, not %v", removed.Name)
+	}
+	headers = msg.Headers()
+	if len(headers) != 3 {
+		t.Errorf("Expected 3 headers, got %d", len(headers))
+	}
+	removed = search.First(search.Tag("ReplyTo", ""), headers)
+	if removed != nil {
+		t.Errorf("Did not expect to find %v in the SOAP headers", removed.Name)
+	}
+}
+
+func TestSoapAddAndRemoveBody(t *testing.T) {
+	msg := parseSoap()
+	msg.SetBody(
+		MuElemC("ReplyTo", "", "Me"),
+		MuElemC("AbandonAll", "", "Hope"),
+		MuElemC("Frob", "", "Abandon"))
+	body := msg.Body()
+	if len(body) != 3 {
+		t.Errorf("Expected 3 body elements, got %d", len(body))
+	}
+	if body[0].Name.Local != "Frob" {
+		t.Errorf("Expected first body to be Frob, not %v", body[0].Name)
+	}
+	if s := string(body[0].Content); s != "Abandon" {
+		t.Errorf("Expected Frob body to be Abandon, not %s", s)
+	}
+	if body[1].Name.Local != "ReplyTo" {
+		t.Errorf("Expected third body to be ReplyTo, not %v", body[1].Name)
+	}
+	if body[2].Name.Local != "AbandonAll" {
+		t.Errorf("Expected fourth body to be AbandonAll, not %v", body[2].Name)
+	}
+	removed := msg.RemoveBody(body[1])
+	if removed == nil {
+		t.Errorf("Failed to remove %v", body[1].Name)
+	}
+	if removed.Name.Local != "ReplyTo" {
+		t.Errorf("Expected removed body to be ReplyTo, not %v", removed.Name)
+	}
+	body = msg.Body()
+	if len(body) != 2 {
+		t.Errorf("Expected 2 body elements, got %d", len(body))
+	}
+	removed = search.First(search.Tag("ReplyTo", ""), body)
+	if removed != nil {
+		t.Errorf("Did not expect to find %v in the SOAP body", removed.Name)
+	}
+}
+
 func TestSoapNoEnvelope(t *testing.T) {
 	_, err := Parse(strings.NewReader(`<?xml version="1.0"?>`))
 	if err == nil || err.Error() != NoEnvelope {
@@ -62,7 +170,7 @@ func TestSoapEnvelopeOverstuffed(t *testing.T) {
 
 func TestSoapTooManyHeader(t *testing.T) {
 	msg := NewMessage()
-	msg.Body.Name = headerName
+	msg.body.Name = headerName
 	_, err := IsSoap(msg.Document)
 	if err == nil || err.Error() != TooManyHeader {
 		t.Errorf("IsSoap should have failed with TooManyHeader, got %v", err)
@@ -71,7 +179,7 @@ func TestSoapTooManyHeader(t *testing.T) {
 
 func TestSoapTooManyBody(t *testing.T) {
 	msg := NewMessage()
-	msg.Header.Name = bodyName
+	msg.header.Name = bodyName
 	_, err := IsSoap(msg.Document)
 	if err == nil || err.Error() != TooManyBody {
 		t.Errorf("IsSoap should have failed with TooManyBody, got %v", err)
@@ -80,7 +188,7 @@ func TestSoapTooManyBody(t *testing.T) {
 
 func TestSoapBadTag(t *testing.T) {
 	msg := NewMessage()
-	msg.Header.Name = faultName
+	msg.header.Name = faultName
 	_, err := IsSoap(msg.Document)
 	if err == nil || err.Error() != BadTag {
 		t.Errorf("IsSoap should have failed with BadTag, got %v", err)
@@ -94,7 +202,7 @@ func TestSoapAddHeaderAndBody(t *testing.T) {
 	if err != nil {
 		t.Error("IsSoap should have passed")
 	}
-	if msg.Header == nil || msg.Body == nil {
+	if msg.header == nil || msg.body == nil {
 		t.Error("IsSoap failed to add a header and a body")
 	}
 }
