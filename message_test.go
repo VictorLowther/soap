@@ -65,6 +65,39 @@ func TestSoapGetHeadersAndBody(t *testing.T) {
 	}
 }
 
+func TestSoapGetHeaders(t *testing.T) {
+	msg := parseSoap()
+	actionHdr := MuElem("Action","")
+	toHdr := MuElem("To","")
+	action := msg.GetHeader(actionHdr)
+	if action == nil {
+		t.Errorf("Expected to get %v, got nil!",actionHdr.Name)
+	}
+	if action.Name != actionHdr.Name {
+		t.Errorf("Expected to get %v, got %v",actionHdr.Name, action.Name)
+	}
+	to := msg.GetHeader(toHdr)
+	if to == nil {
+		t.Errorf("Expected to get %v, got nil!",toHdr.Name)
+	}
+	if to.Name != toHdr.Name {
+		t.Errorf("Expected to get %v, got %v",toHdr.Name, to.Name)
+	}
+}
+
+func TestSoapGetBody(t *testing.T) {
+	msg := parseSoap()
+	frobBody := dom.Elem("Frob","")
+	frob := msg.GetBody(frobBody)
+	if frob == nil {
+		t.Errorf("Expected to get %v, got nil!",frobBody.Name)
+	}
+	if frob.Name != frobBody.Name {
+		t.Errorf("Expected to get %v, got %v",frobBody.Name, frob.Name)
+	}
+}
+
+
 func TestSoapAddAndRemoveHeaders(t *testing.T) {
 	msg := parseSoap()
 	msg.SetHeader(

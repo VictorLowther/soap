@@ -56,6 +56,15 @@ func (m *Message) AllBodyElements() []*dom.Element {
 	return m.body.Descendants()
 }
 
+func get(loc, template *dom.Element) *dom.Element {
+	match := search.Tag(template.Name.Local,template.Name.Space)
+	for _,a := range template.Attributes {
+		match = search.And(match,
+			search.Attr(a.Name.Local,a.Name.Space, a.Value))
+	}
+	return search.First(match,loc.Children())
+}
+
 func set(loc *dom.Element, elems ...*dom.Element) {
 	for _, elem := range elems {
 		e := search.First(search.Tag(elem.Name.Local, elem.Name.Space),
@@ -66,6 +75,12 @@ func set(loc *dom.Element, elems ...*dom.Element) {
 			e.Replace(elem)
 		}
 	}
+}
+
+// GetHeader retrieves the first child of the SOAP header that
+// matches the name and attributes on the passed element.
+func (m *Message) GetHeader(template *dom.Element) *dom.Element {
+	return get(m.header, template)
 }
 
 // SetHeader adds (or updates) any number of elements to the SOAP
@@ -84,6 +99,12 @@ func (m *Message) SetHeader(elems ...*dom.Element) *Message {
 // is returned.
 func (m *Message) RemoveHeader(elem *dom.Element) *dom.Element {
 	return m.header.RemoveChild(elem)
+}
+
+// GetBody retrieves the first child of the SOAP body that
+// matches the name and attributes on the passed element.
+func (m *Message) GetBody(template *dom.Element) *dom.Element {
+	return get(m.body, template)
 }
 
 // SetBody adds (or updates) any number of elements to the SOAP
@@ -107,8 +128,7 @@ func (m *Message) RemoveBody(elem *dom.Element) *dom.Element {
 // Fault returns the Fault element if it is present in the SOAP body,
 // otherwise it returns nil.
 func (m *Message) Fault() *dom.Element {
-	return search.First(search.Tag("Fault", NS_ENVELOPE),
-		m.body.Children())
+	return m.GetBody(dom.Elem("Fault", NS_ENVELOPE))
 }
 
 // MustUnderstand ensures that the given element has the
@@ -117,6 +137,12 @@ func (m *Message) Fault() *dom.Element {
 // how to process a certian event.
 func MustUnderstand(e *dom.Element) *dom.Element {
 	return e.Attr("mustUnderstand", NS_ENVELOPE, "true")
+}
+
+// MuElem wraps a call to dom.Elem with a call to MustUnderstand.
+// It is intended to be used as shorthand for generating headers.
+func MuElem(name, space string) *dom.Element {
+	return MustUnderstand(dom.Elem(name, space))
 }
 
 // MuElemC wraps a call to dom.ElemC with a call to MustUnderstand.
